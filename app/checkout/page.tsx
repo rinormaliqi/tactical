@@ -10,7 +10,7 @@ import Footer from '@/components/store/Footer';
 import { useCart } from '@/lib/CartContext';
 import { useLang } from '@/lib/LanguageContext';
 
-const ease = [0.16, 1, 0.3, 1];
+const ease: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 interface FormData {
   customer_name: string;

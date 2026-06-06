@@ -21,6 +21,7 @@ export interface Product {
   stock: number;
   images: string[];
   featured: boolean;
+  barcode?: string | null;
   rating: number;
   review_count: number;
   old_price?: number | null;

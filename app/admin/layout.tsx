@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, ShoppingBag, Package, Layers, ExternalLink, Menu, X, LogOut, BarChart3, Store } from 'lucide-react';
 import { useState } from 'react';
 import { useLang } from '@/lib/LanguageContext';
+import { type TranslationKey } from '@/lib/i18n';
 
 const navItems = [
   { href: '/admin', icon: LayoutDashboard, key: 'admin_dashboard' as const },
@@ -127,7 +128,7 @@ function SidebarContent({
   onNavigate,
 }: {
   pathname: string;
-  tr: (k: 'admin_dashboard' | 'admin_orders' | 'admin_products' | 'admin_inventory') => string;
+  tr: (k: TranslationKey) => string;
   onNavigate?: () => void;
 }) {
   return (

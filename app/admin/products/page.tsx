@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, X, Check, AlertCircle } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Check, AlertCircle, Search } from 'lucide-react';
 import Image from 'next/image';
 import { type Product, type Category } from '@/lib/types';
 import { useLang } from '@/lib/LanguageContext';
@@ -16,12 +16,13 @@ interface ProductForm {
   category_id: string;
   slug: string;
   stock: string;
+  barcode: string;
   featured: boolean;
   images: string[];
 }
 
 const EMPTY_FORM: ProductForm = {
-  name_al: '', name_en: '', description_al: '', description_en: '',
+  name_al: '', name_en: '', description_al: '', description_en: '', barcode: '',
   price: '', category_id: '', slug: '', stock: '0', featured: false, images: [],
 };
 
@@ -36,10 +37,12 @@ export default function AdminProductsPage() {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [formError, setFormError] = useState('');
+  const [search, setSearch] = useState('');
 
-  const load = async () => {
+  const load = async (q = '') => {
+    const url = q ? `/api/products?search=${encodeURIComponent(q)}` : '/api/products';
     const [prods, cats] = await Promise.all([
-      fetch('/api/products').then(r => r.json()),
+      fetch(url).then(r => r.json()),
       fetch('/api/categories').then(r => r.json()),
     ]);
     setProducts(prods);
@@ -47,7 +50,10 @@ export default function AdminProductsPage() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const t = setTimeout(() => load(search), 250);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const startEdit = (p: Product) => {
     setEditing(p);
@@ -57,7 +63,7 @@ export default function AdminProductsPage() {
       name_al: p.name_al, name_en: p.name_en ?? '',
       description_al: p.description_al ?? '', description_en: p.description_en ?? '',
       price: String(p.price), category_id: String(p.category_id ?? ''),
-      slug: p.slug, stock: String(p.stock), featured: p.featured,
+      slug: p.slug, stock: String(p.stock), barcode: p.barcode ?? '', featured: p.featured,
       images: Array.isArray(p.images) ? p.images : [],
     });
   };
@@ -93,12 +99,16 @@ export default function AdminProductsPage() {
         name_al: form.name_al, name_en: form.name_en,
         description_al: form.description_al, description_en: form.description_en,
         price: parseFloat(form.price), category_id: parseInt(form.category_id) || null,
-        stock: parseInt(form.stock), featured: form.featured, images: form.images,
+        stock: parseInt(form.stock), barcode: form.barcode, featured: form.featured, images: form.images,
       }),
     });
     setSaving(false);
-    if (!res.ok) { setFormError('Ruajtja dështoi.'); return; }
-    await load();
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setFormError(d.error === 'Barcode already exists' ? 'Ky barkod ekziston tashmë.' : 'Ruajtja dështoi.');
+      return;
+    }
+    await load(search);
     cancel();
   };
 
@@ -113,16 +123,19 @@ export default function AdminProductsPage() {
         name_al: form.name_al, name_en: form.name_en,
         description_al: form.description_al, description_en: form.description_en,
         price: parseFloat(form.price), category_id: parseInt(form.category_id) || null,
-        slug, stock: parseInt(form.stock), featured: form.featured, images: form.images,
+        slug, stock: parseInt(form.stock), barcode: form.barcode, featured: form.featured, images: form.images,
       }),
     });
     setSaving(false);
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
-      setFormError(d.error === 'Slug already exists' ? 'Ky slug ekziston tashmë.' : 'Krijimi dështoi.');
+      const msg = d.error === 'Slug already exists' ? 'Ky slug ekziston tashmë.'
+        : d.error === 'Barcode already exists' ? 'Ky barkod ekziston tashmë.'
+        : 'Krijimi dështoi.';
+      setFormError(msg);
       return;
     }
-    await load();
+    await load(search);
     cancel();
   };
 
@@ -130,7 +143,7 @@ export default function AdminProductsPage() {
     if (deleteId === null) return;
     await fetch(`/api/admin/products/${deleteId}`, { method: 'DELETE' });
     setDeleteId(null);
-    await load();
+    await load(search);
   };
 
   const F = ({ label, value, onChange, type = 'text', rows }: {
@@ -176,6 +189,23 @@ export default function AdminProductsPage() {
         </button>
       </div>
 
+      {/* Search (name or barcode) */}
+      <div className="relative max-w-md">
+        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Kërko sipas emrit ose barkodit..."
+          className="w-full pl-10 pr-4 py-2.5 border text-sm outline-none"
+          style={{ backgroundColor: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)', color: 'var(--color-text)', borderRadius: 'var(--radius-sm)' }}
+        />
+        {search && (
+          <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }}>
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
       {/* Add / Edit form */}
       {(adding || editing) && (
         <div
@@ -213,6 +243,8 @@ export default function AdminProductsPage() {
                 ))}
               </select>
             </div>
+
+            <F label="Barkodi" value={form.barcode} onChange={v => setForm(f => ({ ...f, barcode: v }))} />
 
             {adding && (
               <F label="Slug (URL)" value={form.slug} onChange={v => setForm(f => ({ ...f, slug: v }))} />
@@ -317,7 +349,12 @@ export default function AdminProductsPage() {
                   </div>
                   <div className="min-w-0">
                     <div className="text-sm font-medium truncate" style={{ color: 'var(--color-text)' }}>{p.name_al}</div>
-                    <div className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{p.slug}</div>
+                    <div className="text-[10px] flex items-center gap-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                      <span>{p.slug}</span>
+                      {p.barcode && (
+                        <span className="font-mono px-1 rounded" style={{ backgroundColor: 'var(--color-bg-soft)', letterSpacing: '0.02em' }}>{p.barcode}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="col-span-2 text-xs" style={{ color: 'var(--color-text-muted)' }}>

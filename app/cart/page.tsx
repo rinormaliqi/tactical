@@ -9,7 +9,7 @@ import ProductImage from '@/components/store/ProductImage';
 import { useCart } from '@/lib/CartContext';
 import { useLang } from '@/lib/LanguageContext';
 
-const ease = [0.16, 1, 0.3, 1];
+const ease: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 export default function CartPage() {
   const { items, count, total, remove, setQty } = useCart();

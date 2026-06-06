@@ -14,7 +14,7 @@ import { type Product } from '@/lib/types';
 import { useCart } from '@/lib/CartContext';
 import { useLang } from '@/lib/LanguageContext';
 
-const ease = [0.16, 1, 0.3, 1];
+const ease: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 export default function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);

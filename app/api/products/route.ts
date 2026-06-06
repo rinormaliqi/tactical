@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { dbAll } from '@/lib/db';
 import { Product } from '@/lib/types';
 
 export async function GET(req: NextRequest) {
-  const db = getDb();
   const { searchParams } = new URL(req.url);
   const category = searchParams.get('category');
   const featured = searchParams.get('featured');
   const search = searchParams.get('search');
+  const barcode = searchParams.get('barcode');
   const sort = searchParams.get('sort') ?? 'name_al';
 
   let query = `
@@ -18,6 +18,11 @@ export async function GET(req: NextRequest) {
   `;
   const params: (string | number)[] = [];
 
+  // Exact barcode lookup (uses the barcode index) — for POS scanning
+  if (barcode) {
+    query += ' AND p.barcode = ?';
+    params.push(barcode.trim());
+  }
   if (category && category !== 'all') {
     query += ' AND c.slug = ?';
     params.push(category);
@@ -26,8 +31,9 @@ export async function GET(req: NextRequest) {
     query += ' AND p.featured = 1';
   }
   if (search) {
-    query += ' AND (p.name_al LIKE ? OR p.name_en LIKE ?)';
-    params.push(`%${search}%`, `%${search}%`);
+    // Match name (AL/EN) or barcode
+    query += ' AND (p.name_al LIKE ? OR p.name_en LIKE ? OR p.barcode LIKE ?)';
+    params.push(`%${search}%`, `%${search}%`, `%${search}%`);
   }
 
   const orderMap: Record<string, string> = {
@@ -40,7 +46,7 @@ export async function GET(req: NextRequest) {
   };
   query += ` ORDER BY ${orderMap[sort] ?? 'p.name_al ASC'}`;
 
-  const rows = db.prepare(query).all(...params) as (Product & { images: string })[];
+  const rows = await dbAll<Product & { images: string }>(query, params);
   const products = rows.map(r => ({
     ...r,
     images: JSON.parse(r.images || '[]'),

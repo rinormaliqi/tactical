@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { dbAll } from '@/lib/db';
 
 export async function GET() {
-  const db = getDb();
-  const categories = db.prepare('SELECT * FROM categories ORDER BY name_al').all();
+  const categories = await dbAll('SELECT * FROM categories ORDER BY name_al');
   return NextResponse.json(categories);
 }

@@ -10,7 +10,7 @@ import Footer from '@/components/store/Footer';
 import { type Order } from '@/lib/types';
 import { useLang } from '@/lib/LanguageContext';
 
-const ease = [0.16, 1, 0.3, 1];
+const ease: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 export default function OrderSuccessPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);

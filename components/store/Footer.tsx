@@ -106,7 +106,7 @@ export default function Footer() {
                   className="w-9 h-9 flex items-center justify-center transition-colors hover:bg-[var(--color-olive)]"
                   style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', color: 'white' }}
                 >
-                  <Icon size={16} strokeWidth={1.75} />
+                  <Icon size={16} />
                 </a>
               ))}
             </div>

@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { type Stats, type Order } from '@/lib/types';
 import { useLang } from '@/lib/LanguageContext';
 
-const ease = [0.16, 1, 0.3, 1];
+const ease: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'var(--color-pending)',

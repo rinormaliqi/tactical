@@ -1,24 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { dbGet, dbAll } from '@/lib/db';
 import { isAuthed } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   if (!isAuthed(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const db = getDb();
 
-  const totalOrders = (db.prepare("SELECT COUNT(*) as c FROM orders").get() as { c: number }).c;
-  const totalRevenue = (db.prepare("SELECT COALESCE(SUM(total), 0) as r FROM orders WHERE status != 'cancelled'").get() as { r: number }).r;
+  const num = async (sql: string) => ((await dbGet<{ v: number }>(sql))?.v ?? 0);
 
-  const ordersToday = (db.prepare("SELECT COUNT(*) as c FROM orders WHERE date(created_at) = date('now')").get() as { c: number }).c;
-  const revenueToday = (db.prepare("SELECT COALESCE(SUM(total), 0) as r FROM orders WHERE date(created_at) = date('now') AND status != 'cancelled'").get() as { r: number }).r;
+  const totalOrders = await num("SELECT COUNT(*) as v FROM orders");
+  const totalRevenue = await num("SELECT COALESCE(SUM(total), 0) as v FROM orders WHERE status != 'cancelled'");
+  const ordersToday = await num("SELECT COUNT(*) as v FROM orders WHERE date(created_at) = date('now')");
+  const revenueToday = await num("SELECT COALESCE(SUM(total), 0) as v FROM orders WHERE date(created_at) = date('now') AND status != 'cancelled'");
+  const ordersWeek = await num("SELECT COUNT(*) as v FROM orders WHERE created_at >= datetime('now', '-7 days')");
+  const revenueWeek = await num("SELECT COALESCE(SUM(total), 0) as v FROM orders WHERE created_at >= datetime('now', '-7 days') AND status != 'cancelled'");
+  const pendingOrders = await num("SELECT COUNT(*) as v FROM orders WHERE status = 'pending'");
+  const lowStock = await num("SELECT COUNT(*) as v FROM products WHERE stock < 10");
 
-  const ordersWeek = (db.prepare("SELECT COUNT(*) as c FROM orders WHERE created_at >= datetime('now', '-7 days')").get() as { c: number }).c;
-  const revenueWeek = (db.prepare("SELECT COALESCE(SUM(total), 0) as r FROM orders WHERE created_at >= datetime('now', '-7 days') AND status != 'cancelled'").get() as { r: number }).r;
-
-  const pendingOrders = (db.prepare("SELECT COUNT(*) as c FROM orders WHERE status = 'pending'").get() as { c: number }).c;
-  const lowStock = (db.prepare("SELECT COUNT(*) as c FROM products WHERE stock < 10").get() as { c: number }).c;
-
-  const topProducts = db.prepare(`
+  const topProducts = await dbAll(`
     SELECT oi.product_name as name, SUM(oi.quantity) as quantity, SUM(oi.quantity * oi.price) as revenue
     FROM order_items oi
     JOIN orders o ON oi.order_id = o.id
@@ -26,11 +24,9 @@ export async function GET(req: NextRequest) {
     GROUP BY oi.product_name
     ORDER BY quantity DESC
     LIMIT 5
-  `).all();
+  `);
 
-  const ordersByStatus = db.prepare(`
-    SELECT status, COUNT(*) as count FROM orders GROUP BY status
-  `).all();
+  const ordersByStatus = await dbAll(`SELECT status, COUNT(*) as count FROM orders GROUP BY status`);
 
   return NextResponse.json({
     total_orders: totalOrders,

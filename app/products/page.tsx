@@ -9,7 +9,7 @@ import ProductCard from '@/components/store/ProductCard';
 import { type Product, type Category } from '@/lib/types';
 import { useLang } from '@/lib/LanguageContext';
 
-const ease = [0.16, 1, 0.3, 1];
+const ease: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 export default function ProductsPage() {
   const { lang, tr } = useLang();

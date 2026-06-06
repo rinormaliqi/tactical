@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Plus, Minus, Trash2, Store, Check, X, Receipt } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, Store, Check, X, Receipt, ScanBarcode } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { type Product, type Order } from '@/lib/types';
 import { useLang } from '@/lib/LanguageContext';
@@ -14,6 +14,8 @@ export default function SalesPage() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState('');
+  const [scan, setScan] = useState('');
+  const [scanMsg, setScanMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
   const [customer, setCustomer] = useState('');
   const [note, setNote] = useState('');
@@ -28,8 +30,33 @@ export default function SalesPage() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return products.filter(p => !q || p.name_al.toLowerCase().includes(q) || p.name_en.toLowerCase().includes(q));
+    return products.filter(p => !q
+      || p.name_al.toLowerCase().includes(q)
+      || p.name_en.toLowerCase().includes(q)
+      || (p.barcode ?? '').toLowerCase().includes(q));
   }, [products, search]);
+
+  // Barcode scan → exact server lookup → add to cart (scanners type the code + Enter)
+  const handleScan = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter') return;
+    const code = scan.trim();
+    if (!code) return;
+    const res = await fetch(`/api/products?barcode=${encodeURIComponent(code)}`);
+    const found: Product[] = res.ok ? await res.json() : [];
+    if (found.length > 0) {
+      const p = found[0];
+      if (p.stock === 0) {
+        setScanMsg({ ok: false, text: `${lang === 'al' ? 'Jashtë stoku' : 'Out of stock'}: ${p.name_al}` });
+      } else {
+        add(p);
+        setScanMsg({ ok: true, text: `${lang === 'al' ? 'U shtua' : 'Added'}: ${p.name_al}` });
+      }
+    } else {
+      setScanMsg({ ok: false, text: `${lang === 'al' ? 'Barkodi nuk u gjet' : 'Barcode not found'}: ${code}` });
+    }
+    setScan('');
+    setTimeout(() => setScanMsg(null), 2500);
+  };
 
   const total = lines.reduce((s, l) => s + l.product.price * l.quantity, 0);
   const count = lines.reduce((s, l) => s + l.quantity, 0);
@@ -103,11 +130,32 @@ export default function SalesPage() {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Product picker */}
         <div className="lg:col-span-2 space-y-4">
+          {/* Barcode scanner */}
+          <div>
+            <div className="relative">
+              <ScanBarcode size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-olive)' }} />
+              <input
+                value={scan}
+                onChange={e => setScan(e.target.value)}
+                onKeyDown={handleScan}
+                placeholder={t('Skano ose shkruaj barkodin, pastaj Enter...', 'Scan or type barcode, then Enter...')}
+                className="w-full pl-11 pr-4 py-3 border-2 text-sm outline-none font-mono"
+                style={{ backgroundColor: 'var(--color-olive-light)', borderColor: 'var(--color-olive)', color: 'var(--color-text)', borderRadius: 'var(--radius-sm)' }}
+              />
+            </div>
+            {scanMsg && (
+              <p className="flex items-center gap-1.5 text-xs mt-2" style={{ color: scanMsg.ok ? 'var(--color-delivered)' : 'var(--color-sale)' }}>
+                {scanMsg.ok ? <Check size={12} /> : <X size={12} />}
+                {scanMsg.text}
+              </p>
+            )}
+          </div>
+
           <div className="relative">
             <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
             <input
               value={search} onChange={e => setSearch(e.target.value)}
-              placeholder={t('Kërko produkte për të shtuar...', 'Search products to add...')}
+              placeholder={t('Kërko sipas emrit ose barkodit...', 'Search by name or barcode...')}
               className="w-full pl-10 pr-4 py-2.5 border text-sm outline-none"
               style={{ backgroundColor: 'var(--color-bg-elevated)', borderColor: 'var(--color-border)', color: 'var(--color-text)', borderRadius: 'var(--radius-sm)' }}
             />
@@ -122,9 +170,12 @@ export default function SalesPage() {
                 >
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate" style={{ color: 'var(--color-text)' }}>{lang === 'al' ? p.name_al : p.name_en}</div>
-                    <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                      {p.category_name_al ? (lang === 'al' ? p.category_name_al : p.category_name_en) + ' · ' : ''}
-                      {t('Stoku', 'Stock')}: {p.stock}
+                    <div className="text-xs flex items-center gap-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                      <span>
+                        {p.category_name_al ? (lang === 'al' ? p.category_name_al : p.category_name_en) + ' · ' : ''}
+                        {t('Stoku', 'Stock')}: {p.stock}
+                      </span>
+                      {p.barcode && <span className="font-mono px-1 rounded" style={{ backgroundColor: 'var(--color-bg-soft)' }}>{p.barcode}</span>}
                     </div>
                   </div>
                   <span className="font-heading text-base font-700 shrink-0" style={{ fontWeight: 700, color: 'var(--color-text)' }}>€{p.price.toFixed(2)}</span>

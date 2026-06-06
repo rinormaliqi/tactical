@@ -8,7 +8,7 @@ import { type Product, type Category } from '@/lib/types';
 import ProductCard from './ProductCard';
 import { useLang } from '@/lib/LanguageContext';
 
-const ease = [0.16, 1, 0.3, 1];
+const ease: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 export default function FeaturedSection() {
   const { lang } = useLang();

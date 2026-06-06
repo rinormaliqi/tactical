@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { ArrowRight, Truck, ShieldCheck, Headphones, RefreshCw } from 'lucide-react';
 import { useLang } from '@/lib/LanguageContext';
 
-const ease = [0.16, 1, 0.3, 1];
+const ease: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 /** Drop your photo at /public/hero.jpg (or change this path). */
 const HERO_IMAGE = '/hero.jpg';

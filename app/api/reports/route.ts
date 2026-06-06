@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { dbGet, dbAll } from '@/lib/db';
 import { isAuthed } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -11,7 +11,6 @@ const AL_MONTHS = ['Janar', 'Shkurt', 'Mars', 'Prill', 'Maj', 'Qershor', 'Korrik
 export async function GET(req: NextRequest) {
   if (!isAuthed(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const db = getDb();
   const { searchParams } = new URL(req.url);
 
   // Strict validation — only allow known periods and a numeric YYYY-MM-DD date.
@@ -56,7 +55,7 @@ export async function GET(req: NextRequest) {
   const notCancelled = `status != 'cancelled'`;
 
   // Summary
-  const revRow = db.prepare(`
+  const revRow = (await dbGet<Record<string, number>>(`
     SELECT
       COALESCE(SUM(total), 0) AS revenue_total,
       COALESCE(SUM(CASE WHEN source = 'online' THEN total ELSE 0 END), 0) AS revenue_online,
@@ -65,22 +64,22 @@ export async function GET(req: NextRequest) {
       COALESCE(SUM(CASE WHEN source = 'online' THEN 1 ELSE 0 END), 0) AS orders_online,
       COALESCE(SUM(CASE WHEN source = 'in_store' THEN 1 ELSE 0 END), 0) AS orders_instore
     FROM orders WHERE ${where} AND ${notCancelled}
-  `).get() as Record<string, number>;
+  `))!;
 
-  const itemsRow = db.prepare(`
+  const itemsRow = (await dbGet<{ items_sold: number }>(`
     SELECT COALESCE(SUM(oi.quantity), 0) AS items_sold
     FROM order_items oi JOIN orders o ON oi.order_id = o.id
     WHERE ${where.replace(/created_at/g, 'o.created_at')} AND o.status != 'cancelled'
-  `).get() as { items_sold: number };
+  `))!;
 
   const avg = revRow.orders_total > 0 ? revRow.revenue_total / revRow.orders_total : 0;
 
   // Series (zero-filled)
-  const seriesRows = db.prepare(`
+  const seriesRows = await dbAll<{ bucket: string; revenue: number; orders: number }>(`
     SELECT ${seriesExpr} AS bucket, COALESCE(SUM(total), 0) AS revenue, COUNT(*) AS orders
     FROM orders WHERE ${where} AND ${notCancelled}
     GROUP BY bucket
-  `).all() as { bucket: string; revenue: number; orders: number }[];
+  `);
 
   const seriesMap = new Map(seriesRows.map(r => [r.bucket, r]));
   const series = bucketsAll.map(b => {
@@ -92,23 +91,23 @@ export async function GET(req: NextRequest) {
   });
 
   // Top products
-  const topProducts = db.prepare(`
+  const topProducts = await dbAll(`
     SELECT oi.product_name AS name, SUM(oi.quantity) AS quantity, SUM(oi.quantity * oi.price) AS revenue
     FROM order_items oi JOIN orders o ON oi.order_id = o.id
     WHERE ${where.replace(/created_at/g, 'o.created_at')} AND o.status != 'cancelled'
     GROUP BY oi.product_name ORDER BY revenue DESC LIMIT 10
-  `).all();
+  `);
 
   // By status (includes cancelled for completeness)
-  const byStatus = db.prepare(`
+  const byStatus = await dbAll(`
     SELECT status, COUNT(*) AS count, COALESCE(SUM(total), 0) AS revenue
     FROM orders WHERE ${where} GROUP BY status
-  `).all();
+  `);
 
-  const bySource = db.prepare(`
+  const bySource = await dbAll(`
     SELECT source, COUNT(*) AS count, COALESCE(SUM(total), 0) AS revenue
     FROM orders WHERE ${where} AND ${notCancelled} GROUP BY source
-  `).all();
+  `);
 
   return NextResponse.json({
     period,
