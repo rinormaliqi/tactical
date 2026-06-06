@@ -1,26 +1,177 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* Brand — Olive */
+  --color-olive: #5B6A38;
+  --color-olive-dark: #3D4826;
+  --color-olive-light: #EEF1E6;
+  --color-olive-mid: #8A9B5E;
+
+  /* Accents — Tactical */
+  --color-gold: #C29A4B;
+  --color-gold-dark: #9E7C36;
+  --color-sale: #D23B2F;
+  --color-sale-dark: #B02A20;
+
+  /* Dark surfaces */
+  --color-ink: #131310;
+  --color-charcoal: #1E1D18;
+  --color-charcoal-light: #2A2924;
+
+  /* Neutrals */
+  --color-bg: #FAFAF8;
+  --color-bg-elevated: #FFFFFF;
+  --color-bg-soft: #F2F1EC;
+  --color-text: #14130F;
+  --color-text-muted: #6E6D68;
+  --color-border: #E5E2D9;
+  --color-border-strong: #C9C6BC;
+
+  /* Status */
+  --color-pending: #B45309;
+  --color-pending-bg: #FEF3C7;
+  --color-processing: #1D4ED8;
+  --color-processing-bg: #DBEAFE;
+  --color-delivered: #15803D;
+  --color-delivered-bg: #DCFCE7;
+  --color-cancelled: #B91C1C;
+  --color-cancelled-bg: #FEE2E2;
+
+  /* Typography */
+  --font-heading: var(--font-barlow);
+  --font-body: var(--font-inter);
+
+  /* Easing */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
+
+  /* Sharp radii — tactical hard edges */
+  --radius-xs: 1px;
+  --radius-sm: 2px;
+  --radius-md: 3px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Reset & Base */
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body), system-ui, sans-serif;
+  line-height: 1.6;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border-strong); }
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
+
+/* Focus */
+:focus-visible {
+  outline: 2px solid var(--color-olive);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--color-olive);
+  color: white;
+}
+
+/* ── Display heading: bold italic condensed, the Tactiko signature ── */
+.font-display {
+  font-family: var(--font-heading), system-ui, sans-serif;
+  font-style: italic;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.005em;
+  line-height: 0.95;
+}
+
+/* Upright condensed for labels/eyebrows */
+.font-heading {
+  font-family: var(--font-heading), system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* Eyebrow label */
+.eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+}
+
+/* Tactical grid pattern */
+.bg-tactical-grid {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+/* Diagonal hazard stripes (for ribbons / accents) */
+.bg-hazard {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--color-gold) 0,
+    var(--color-gold) 8px,
+    var(--color-ink) 8px,
+    var(--color-ink) 16px
+  );
+}
+
+/* Chevron arrow used in buttons (»-style) */
+.chevrons::after {
+  content: "»";
+  margin-left: 0.4em;
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+/* Image loading shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.img-shimmer {
+  background: linear-gradient(90deg, var(--color-bg-soft) 25%, var(--color-bg) 50%, var(--color-bg-soft) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Slow zoom for hero / category imagery */
+@keyframes slow-zoom {
+  from { transform: scale(1); }
+  to { transform: scale(1.08); }
+}
+.animate-slow-zoom {
+  animation: slow-zoom 18s ease-out infinite alternate;
+}
+
+/* Marquee strip */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 28s linear infinite;
+}
+
+/* Print styles */
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; }
+  /* Let scrollable admin panes expand fully when printing */
+  main, .admin-main { overflow: visible !important; height: auto !important; }
+  .print-break-avoid { break-inside: avoid; }
 }
